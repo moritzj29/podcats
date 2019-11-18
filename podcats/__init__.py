@@ -191,9 +191,10 @@ class Episode(object):
 class Channel(object):
     """Podcast channel"""
 
-    def __init__(self, root_dir, root_url, host, port, title, link, debug=False, video=False, title_format='{filename}{title}'):
+    def __init__(self, root_dir, channel_dir, root_url, host, port, title, link, debug=False, video=False, title_format='{filename}{title}'):
         self.root_dir = root_dir or os.getcwd()
         self.root_url = root_url
+        self.channel_dir = channel_dir
         self.host = host
         self.port = int(port)
         self.link = link or self.root_url
@@ -205,7 +206,7 @@ class Channel(object):
         self.title_format = title_format
 
     def __iter__(self):
-        for root, _, files in os.walk(self.root_dir):
+        for root, _, files in os.walk(os.path.join(self.root_dir, self.channel_dir)):
             relative_dir = root[len(self.root_dir):]
             for fn in files:
                 filepath = os.path.join(root, fn)
@@ -237,52 +238,73 @@ class Channel(object):
         ).strip()
 
 
-def serve(channel):
+def serve(static_folder, channel_dict, host, port, debug):
     """Serve podcast channel and episodes over HTTP"""
     server = Flask(
         __name__,
-        static_folder=channel.root_dir,
+        static_folder=static_folder,
         static_url_path=STATIC_PATH,
     )
-    server.route('/')(
-        lambda: Response(
-            channel.as_xml(),
+
+    @server.route('/<directory>/')
+    def xml_view(directory):
+        print('XML: {}'.format(directory))
+        return Response(
+            channel_dict[directory].as_xml(),
             content_type='application/xml; charset=utf-8')
-    )
-    server.add_url_rule(
-        WEB_PATH,
-        view_func=channel.as_html,
-        methods=['GET'],
-    )
-    server.run(host=channel.host, port=channel.port, debug=channel.debug, threaded=True)
+
+    @server.route(WEB_PATH + '/<directory>/', methods=['GET'])
+    def html_view(directory):
+        print('HTML: {}'.format(directory))
+        return channel_dict[directory].as_html()
+
+    server.run(host=host, port=port, debug=debug, threaded=True)
 
 
 def main():
     """Main function"""
     args = parser.parse_args()
     url = 'http://' + args.host + ':' + args.port
-    channel = Channel(
-        root_dir=path.abspath(args.directory),
-        root_url=url,
-        host=args.host,
-        port=args.port,
-        title=args.title,
-        link=args.link,
-        debug=args.debug,
-        video=args.video,
-        title_format=args.title_format
-    )
+    basepath = path.abspath(args.directory)
+    dirs = next(os.walk(basepath))[1]
+    channel_dict = {}
+    for dir in dirs:
+        m = re.match(r'(?P<index>[0-9]+)(_(?P<title>.*))?', dir).groupdict()
+        index = m['index']
+        if index is None:
+            print('Directory {} does not match naming specification (index_title).'.format(dir))
+            continue
+        title = m['title']
+        if title is None:
+            title = ''
+        
+        channel = Channel(
+            root_dir=path.abspath(args.directory),
+            channel_dir=dir,
+            root_url=url,
+            host=args.host,
+            port=args.port,
+            title=title,
+            link=args.link,
+            debug=args.debug,
+            video=args.video,
+            title_format=args.title_format
+        )
+        channel_dict[index] = channel
+
     if args.action == 'generate':
-        print(channel.as_xml())
+        for channel in channel_dict.values():
+            print(channel.as_xml())
     elif args.action == 'generate_html':
-        print(channel.as_html())
+        for channel in channel_dict.values():
+            print(channel.as_html())
     else:
         print('Welcome to the Podcats web server!')
         print('\nYour podcast feed is available at:\n')
-        print('\t' + channel.root_url + '\n')
         print('The web interface is available at\n')
         print('\t{url}{web_path}\n'.format(url=url, web_path=WEB_PATH))
-        serve(channel)
+        print('{} channels have been set up!'.format(len(channel_dict)))
+        serve(basepath, channel_dict, args.host, args.port, args.debug)
 
 
 parser = argparse.ArgumentParser(
