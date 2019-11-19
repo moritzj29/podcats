@@ -3,7 +3,5 @@
     <enclosure url={{ url }} type="{{ mimetype }}" length="{{ length }}" />
     <guid>{{ guid }}</guid>
     <pubDate>{{ date }}</pubDate>
-    {% if image_url %}
-        <itunes:image href="{{ image_url }}"/>
-    {% endif %}
+    {% if image_url %}<itunes:image href="{{ image_url }}"/>{% endif %}
 </item>

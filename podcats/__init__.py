@@ -224,6 +224,7 @@ class Channel(object):
             title=escape(self.title),
             description=escape(self.description),
             link=escape(self.link),
+            image_url=self.image,
             items=u''.join(episode.as_xml() for episode in sorted(self))
         ).strip()
 
@@ -236,6 +237,30 @@ class Channel(object):
             link=escape(self.link),
             items=u''.join(episode.as_html() for episode in sorted(self)),
         ).strip()
+
+    def _to_url(self, filepath):
+        fn = os.path.basename(filepath)
+        path = STATIC_PATH + '/' + self.channel_dir + '/' + fn
+        path = re.sub(r'//', '/', path)
+        url = self.root_url + pathname2url(path)
+        return url
+
+    @property
+    def image(self):
+        """Return an eventual cover image"""
+        directory = os.path.join(self.root_dir, self.channel_dir)
+        image_files = []
+
+        for fn in os.listdir(directory):
+            ext = os.path.splitext(fn)[1]
+            if ext.lower() in BOOK_COVER_EXTENSIONS:
+                image_files.append(fn)
+
+        if len(image_files) > 0:
+            abs_path_image = image_files[0]
+            return self._to_url(abs_path_image)
+        else:
+            return None
 
 
 def serve(static_folder, channel_dict, host, port, debug):

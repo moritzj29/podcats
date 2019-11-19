@@ -4,6 +4,7 @@
         <title>{{ title }}</title>
         <description>{{ description }}</description>
         <link>{{ link }}</link>
+        {% if image_url %}<itunes:image href="{{ image_url }}"/>{% endif %}
         {{ items }}
     </channel>
 </rss>
