@@ -1,5 +1,10 @@
 <item>
     <title>{{ title }}</title>
+    {% if description %}
+    <description>
+    	{{ description }}
+    </description>
+    {% endif %}
     <enclosure url={{ url }} type="{{ mimetype }}" length="{{ length }}" />
     <guid>{{ guid }}</guid>
     <pubDate>{{ date }}</pubDate>
