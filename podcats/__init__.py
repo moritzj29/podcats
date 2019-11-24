@@ -80,6 +80,7 @@ class Episode(object):
             length=self.length,
             date=formatdate(self.date),
             image_url=self.image,
+            description=self.description,
         )
 
     def as_html(self):
@@ -97,6 +98,7 @@ class Episode(object):
             length=humanize.naturalsize(self.length),
             date=formatdate(self.date),
             image_url=self.image,
+            description=self.description,
         )
 
     def get_tag(self, name):
@@ -182,6 +184,14 @@ class Episode(object):
             return self._to_url(abs_path_image)
         else:
             return None
+
+    @property
+    def description(self):
+        """Return description"""
+        try:
+            return self.tags['description'][0]
+        except Exception:
+            return ''
 
 
 class Channel(object):
